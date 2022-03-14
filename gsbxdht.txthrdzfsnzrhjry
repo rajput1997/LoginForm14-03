@@ -1,0 +1,245 @@
+using LoginForm.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LoginForm.Controllers
+{
+    public class LoginController : Controller
+    {
+        private readonly LoginDbContext _auc;
+        static string key { get; set; } = "A!9HHhi%XjjYY4YP2@Nob009X";
+        public LoginController(LoginDbContext auc)
+        {
+            _auc = auc;
+        }
+        public IActionResult Index()
+        {
+            return View();
+        }
+        public IActionResult GetAllEmployee()
+        {
+            GetAllEmployees();
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+
+        //GetAll Employee record the table  displaye the views
+        public IActionResult GetAllEmployees()
+        {
+            var logns = _auc.UserRegistration.ToList();
+            List<Login> EmplyeeDetails = new List<Login>();
+            foreach (var data in logns)
+            {
+                data.Pwd = MD5HashDecrpyt(data.Pwd);
+                EmplyeeDetails.Add(data);
+            }
+            return View(EmplyeeDetails);
+        }
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(Login uc)
+        {
+            _auc.UserRegistration.Add(uc);
+            uc.Pwd = MD5Hash(uc.Pwd);
+            _auc.Add(uc);
+            _auc.SaveChanges();
+            ViewBag.message = "The user " + uc.Username + " is saved successfully";
+            return View(uc);
+        }
+        public IActionResult Edit(int id)
+        {
+            var Log = _auc.UserRegistration.SingleOrDefault(e => e.UserId == id);
+            return View(Log);
+        }
+        [HttpPost]
+        public IActionResult Edit(Login model)
+        {
+            var Log = new Login()
+            {
+                UserId = model.UserId,
+                Username = model.Username,
+                FirstName = model.FirstName,
+                MiddleName = model.MiddleName,
+                LastName = model.LastName,
+                Address1 = model.Address1,
+                Address2 = model.Address2,
+                Email = model.Email,
+                Mobile = model.Mobile,
+                City = model.City,
+                State = model.State,
+                Country = model.Country,
+                ZipCode = model.ZipCode
+                
+            };
+            _auc.UserRegistration.Update(Log);
+            _auc.SaveChanges();
+            return RedirectToAction("GetAllEmployee");
+        }
+        [HttpPost]
+        public IActionResult Delete(int id)
+        {
+            var Log = _auc.UserRegistration.SingleOrDefault(e => e.UserId == id);
+            _auc.UserRegistration.Remove(Log);
+            _auc.SaveChanges();
+            return RedirectToAction("GetAllEmployee");
+        }
+       // Encrypted Password
+        public static string MD5Hash(string text)
+        {
+
+            using (var md5 = new MD5CryptoServiceProvider())
+            {
+                using (var tdes = new TripleDESCryptoServiceProvider())
+                {
+                    tdes.Key = md5.ComputeHash(UTF8Encoding.UTF8.GetBytes(key));
+                    tdes.Mode = CipherMode.ECB;                    
+
+                    using (var transform = tdes.CreateEncryptor())
+                    {
+                        byte[] textBytes = UTF8Encoding.UTF8.GetBytes(text);
+                        return Convert.ToBase64String(textBytes);
+                    }
+                }
+            }
+        }
+        //Decryted Password
+        public static string MD5HashDecrpyt(string text)
+        {
+            using (var md5 = new MD5CryptoServiceProvider())
+            {
+                using (var tdes = new TripleDESCryptoServiceProvider())
+                {
+                    tdes.Key = md5.ComputeHash(UTF8Encoding.UTF8.GetBytes(key));
+                    tdes.Mode = CipherMode.ECB;                    
+
+                    using (var transform = tdes.CreateDecryptor())
+                    {
+                        byte[] cipherBytes = Convert.FromBase64String(text);                        
+                        return UTF8Encoding.UTF8.GetString(cipherBytes);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+using LoginForm.Models;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace LoginForm.Controllers
+{
+    public class LoginController : Controller
+    {
+        private readonly LoginDbContext _auc;
+        public LoginController(LoginDbContext auc)
+        {
+            _auc = auc;
+        }
+        public IActionResult Index()
+        {
+            var logn = _auc.UserRegistration.ToList();
+            return View(logn);
+        }
+        public IActionResult Create()
+       {
+            return View();
+        }
+        [HttpPost]
+        public async Task<IActionResult> Create(Login log)
+        {
+            if (ModelState.IsValid)
+            {
+                _auc.Add(log);
+                await _auc.SaveChangesAsync();
+                return RedirectToAction("Index");
+
+            }
+            return View(log);
+        }
+        public async Task<IActionResult> Edit(int id)
+        {
+            if (id  = null) 
+            {
+                return RedirectToAction("Index");
+
+            }
+            var get = await _auc.UserRegistration.FindAsync(id);
+            return View(get);
+
+        }
+        [HttpPost]
+        public async Task<IActionResult> Edit(Login lo)
+        {
+            if (ModelState.IsValid)
+            {
+                _auc.Update(lo);
+                await _auc.SaveChangesAsync();
+                return RedirectToAction("Index");
+            }
+            return View(lo);
+
+        }
+        public async Task<IActionResult> Details(int id)
+        {
+            if (id = null)
+            {
+                return RedirectToAction("index");
+
+            }
+            var get = await _auc.UserRegistration.FindAsync(id);
+            return View(get);
+
+        }
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            if (id = null)
+            {
+                return RedirectToAction("Index");
+
+            }
+            var get = await _auc.UserRegistration.FindAsync(id);
+            return View(get);
+
+        }
+        [HttpPost]
+        public async Task<IActionResult> Delete(int? id)
+        {
+
+            var Get = await _auc.UserRegistration.FindAsync(id);
+            _auc.UserRegistration.Remove(Get);
+            await _auc.SaveChangesAsync();
+
+            return RedirectToAction("Index");
+        }
+
+    }
+
+}
+
+
+
+
